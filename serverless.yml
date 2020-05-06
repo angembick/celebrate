@@ -1,0 +1,63 @@
+service: aws-python3 
+custom:
+  vars: ${file(vars.json)}
+
+provider:
+  name: aws
+  runtime: python3.7
+  environment:
+      DB_NAME: ${self:custom.vars.DB_NAME}
+      DB_USER: ${self:custom.vars.DB_USER}
+      DB_PASSWORD: ${self:custom.vars.DB_PASSWORD}
+      DB_HOST: ${self:custom.vars.DB_HOST}
+      DB_PORT: ${self:custom.vars.DB_PORT}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "sns:Publish"
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - "s3:ListBucket"
+        - "s3:GetObject"
+        - "s3:PutObject"
+      Resource: "arn:aws:s3:::[bucket_name]/*"
+
+functions:
+  get_next:
+    handler: handlers/celebration.get_next
+    vpc:
+      securityGroupIds:
+        - ${self:custom.vars.SECURITY_GROUP_ID}
+      subnetIds:
+        - ${self:custom.vars.SUBNET1_ID}
+    events: 
+      - schedule: cron(0 3 * * ? *)
+
+  create:
+    handler: handlers/celebration.create
+    vpc:
+      securityGroupIds:
+        - ${self:custom.vars.SECURITY_GROUP_ID}
+      subnetIds:
+        - ${self:custom.vars.SUBNET1_ID}
+
+  get_all:
+    handler: handlers/celebration.get_all
+    vpc:
+      securityGroupIds:
+        - ${self:custom.vars.SECURITY_GROUP_ID}
+      subnetIds:
+        - ${self:custom.vars.SUBNET1_ID}
+
+  send_text:
+    handler: handlers/reminder.send_text
+    events: 
+      - schedule: cron(0 4 * * ? *)
+
+resources:
+  Resources:
+    NewResource:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: [bucket_name]
